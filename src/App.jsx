@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Header from './components/Header';
 import Home from './components/Home';
 import AddItemForm from './components/AddItemForm';
@@ -65,12 +65,12 @@ export default function App() {
   const [page, setPage] = useState('home');
   const [modal, setModal] = useState({ type: null, item: null });
   const [notification, setNotification] = useState(null);
+  const [authPage, setAuthPage] = useState(null);
 
-  const [authPage, setAuthPage] = useState('login');
   const { user, logout } = useAuth();
 
-  const myItems = items.filter(i => i.owner === user?.email);
-  const borrowedItems = items.filter(i => i.borrowedBy === user?.email);
+  const myItems = items.filter(i => i.owner === (user?.email ?? 'Guest'));
+  const borrowedItems = items.filter(i => i.borrowedBy === (user?.email ?? 'Guest'));
 
   const showNotification = (msg) => {
     setNotification(msg);
@@ -84,7 +84,7 @@ export default function App() {
       status: 'Available',
       borrowedBy: null,
       returnDate: null,
-      owner: user.email
+      owner: user?.email ?? 'Guest'
     };
     setItems(prev => [item, ...prev]);
     showNotification('Item listed!');
@@ -105,7 +105,7 @@ export default function App() {
         ? {
             ...i,
             status: 'Borrowed',
-            borrowedBy: user.email,
+            borrowedBy: user?.email ?? 'Guest',
             returnDate: item.isDonation ? null : returnDate.toISOString().split('T')[0]
           }
         : i
@@ -151,10 +151,6 @@ export default function App() {
     showNotification(`Added to waitlist for "${modal.item.name}"`);
     setModal({ type: null, item: null });
   };
-  
-  //search bar
-
-
 
   const renderPage = () => {
     if (page === 'addItem') return <AddItemForm onAddItem={handleAddItem} />;
@@ -162,15 +158,12 @@ export default function App() {
     return <Home items={items} onBorrow={handleBorrowClick} onWaitlist={handleWaitlistClick} />;
   };
 
-  if (!user) {
-    return authPage === 'login'
-      ? <Login onSuccess={() => setPage('home')} />
-      : <Signup onSuccess={() => setPage('home')} />;
-  }
+  if (authPage === 'login') return <Login onSuccess={() => { setAuthPage(null); setPage('home'); }} switchToSignup={() => setAuthPage('signup')} />;
+  if (authPage === 'signup') return <Signup onSuccess={() => { setAuthPage(null); setPage('home'); }} switchToLogin={() => setAuthPage('login')} />;
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header setPage={setPage} logout={logout} />
+      <Header setPage={setPage} logout={logout} isLoggedIn={!!user} setAuthPage={setAuthPage} />
       <main className="pb-16">{renderPage()}</main>
 
       {notification && (
